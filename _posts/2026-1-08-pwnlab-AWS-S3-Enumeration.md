@@ -1,5 +1,5 @@
 ---
-title: "AWS S3 Enumeration Basics"
+title: "AWS S3 Enumeration "
 date: 2026-01-8
 categories: [PwnLab, AWS]
 tags: [pwnlab, aws, s3]
