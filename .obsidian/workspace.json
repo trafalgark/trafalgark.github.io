@@ -4,11 +4,11 @@
     "type": "split",
     "children": [
       {
-        "id": "3369bbe986262a32",
+        "id": "868327cea3cb050d",
         "type": "tabs",
         "children": [
           {
-            "id": "5b09b0e7eaf2138e",
+            "id": "f72d46f0e6412fa5",
             "type": "leaf",
             "state": {
               "type": "markdown",
@@ -183,24 +183,23 @@
       "bases:Create new base": false
     }
   },
-  "active": "5b09b0e7eaf2138e",
+  "active": "f72d46f0e6412fa5",
   "lastOpenFiles": [
-    "assets/images/fries/2026-02-11_21-07.png",
+    "assets/images/fries/2026-02-12_11-18.png",
     "_posts/2026-2-05-Fries-htb.md",
+    "_site/assets/images/fries/2026-02-12_11-18.png",
+    "assets/images/fries/2026-02-12_11-12.png",
+    "_site/assets/images/fries/2026-02-12_11-12.png",
+    "assets/images/fries/2026-02-12_11-02.png",
     "assets/images/fries/Pasted image 20260205204537.png",
-    "assets/images/fries/friesport80.png",
-    "_site/assets/images/fries/friesport80.png",
-    "assets/images/fries/2026-02-05_22-08.png",
-    "assets/images/fries/friesport443.png",
+    "assets/images/image.png",
+    "assets/images/image-1.png",
+    "assets/images/image-6.png",
+    "assets/images/Pasted-image-20251230205454.png",
+    "_posts/2026-1-08-pwnlab-AWS-S3-Enumeration.md",
     "assets/images/fries/Pasted.md",
     "_site/assets/images/fries/Pasted.md",
-    "_site/assets/images/fries/friesport443.png",
     "_posts/2025-12-30-htb-certificate.md",
-    "_posts/2026-1-08-pwnlab-AWS-S3-Enumeration.md",
-    "assets/images/Pasted-image-20251230184110.png",
-    "_site/assets/images/Pasted-image-20251230184110.png",
-    "_site/assets/images/fries/Pasted image 20260205204537.png",
-    "_site/assets/images/Pasted image 20260205204537.png",
     "().md",
     "assets/images/fries"
   ]
