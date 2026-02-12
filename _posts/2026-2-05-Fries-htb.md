@@ -1,8 +1,17 @@
 ---
-title: "Hack The Box — Fries"
+title: Hack The Box — Fries
 date: 2026-2-05
-categories: [HTB, Active Directory]
-tags: [htb, ad, adcs, docker, Manage CA, nfs access]
+categories:
+  - HTB
+  - Active Directory
+tags:
+  - htb
+  - ad
+  - adcs
+  - docker
+  - Manage CA
+  - nfs access
+  - pwn
 ---
 
 ![](assets/images/fries/Pasted image 20260205204537.png)
@@ -493,7 +502,7 @@ Candidate.Engine.: Device Generator
 Candidates.#1....: 061091 -> gisele
 Hardware.Mon.#1..: Temp: 49c Util: 97% Core:2520MHz Mem:8001MHz Bus:8
 ```
-### Port 443
+## Port 443 (PWN)
 
 ![Image description](assets/images/fries/friesport443.png)
 ![](assets/images/fries/2026-02-12_10-52.png)
@@ -527,14 +536,14 @@ now we have the password of svc_infra
 svc_infra:m6tneOMAh5p0wQ0d
 ```
 check is vaild in bloodhound
-
+## foothold
 ```sh
 ➜  fires nxc smb 10.129.16.25 -u 'svc_infra' -p 'm6tneOMAh5p0wQ0d'          
 SMB         10.129.16.25    445    DC01             [*] Windows 10 / Server 2019 Build 17763 x64 (name:DC01) (domain:fries.htb) (signing:True) (SMBv1:None) (Null Auth:True)
 SMB         10.129.16.25    445    DC01             [+] fries.htb\svc_infra:m6tneOMAh5p0wQ0d 
 ```
 there's no intersting shares this user don't have winrm access
-#### bloodHound
+### bloodHound
 ```sh
 ➜  bloodHound nxc ldap 10.129.16.25 -u 'svc_infra' -p 'm6tneOMAh5p0wQ0d'  --bloodhound --dns-server 10.129.16.25 -c all     
 LDAP        10.129.16.25    389    DC01             [*] Windows 10 / Server 2019 Build 17763 (name:DC01) (domain:fries.htb) (signing:None) (channel binding:Never) 

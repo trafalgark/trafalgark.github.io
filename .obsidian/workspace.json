@@ -53,7 +53,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "",
+                "query": "tag:docker",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -74,7 +74,8 @@
               "title": "Bookmarks"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "horizontal",
@@ -190,12 +191,12 @@
     "_site/archives/index.html",
     "_site/archives",
     "_site/tags/index.html",
-    "_site/categories/index.html",
     "_site/posts/pwnlab-AWS-S3-Enumeration/index.html",
     "_site/posts/htb-certificate/index.html",
     "_site/posts/Fries-htb/index.html",
     "_site/posts/pwnlab-AWS-S3-Enumeration",
     "_site/posts/htb-certificate",
+    "_site/posts/Fries-htb",
     "_site/assets/img/favicons/web-app-manifest-512x512.png",
     "_site/assets/img/favicons/web-app-manifest-192x192.png",
     "_site/assets/img/favicons/favicon.svg",
